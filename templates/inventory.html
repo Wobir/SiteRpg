@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}
+Инвентарь игрока {{ player.username }}
+{% endblock %}
+
+{% block content %}
+    <h1> Инвентарь игрока {{ player.username }} </h1>
+    <p> Здоровье: {{ player.hit_points }}</p>
+    <p> Деньги: {{ player.money }}</p>
+    <p> Опыт: {{ player.exp }}</p>
+    <p> Уровень: {{ player.level }}</p>
+    <p> Оружие: {{ player.weapon.name }}</p>
+    <p> Урон: {{ player.weapon.damage }}</p>
+    <p> Защита: {{ player.weapon.defense }}</p>
+{% endblock %}
