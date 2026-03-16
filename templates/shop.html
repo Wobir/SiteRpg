@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}
+Магазин
+{% endblock %}
+
+{% block content %}
+    {% if message%}
+        <p>{{message}}</p>
+    {% endif %}
+    <form method= "POST">
+        <input type = "submit" name = "command" value = "зелье лечения">
+        <input type = "submit" name = "command" value = "большое зелье лечения">
+    </form>
+{% endblock %}

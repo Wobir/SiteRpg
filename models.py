@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-
+import datetime
 db = SQLAlchemy()
 
 class Player(db.Model):
@@ -24,3 +24,23 @@ class Weapon(db.Model):
     players = db.relationship('Player',
                               backref = "weapon",
                               lazy = "dynamic")
+    
+class Monster(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String(), nullable = False)
+    health = db.Column(db.Integer, default = 50)
+    damage = db.Column(db.Integer, default = 10)
+    defense = db.Column(db.Integer, default = 5)
+    exp_reward = db.Column(db.Integer, default = 20)
+    gold_reward = db.Column(db.Integer, default = 30)
+    min_level = db.Column(db.Integer, default = 1)
+
+class BattleLog(db.Model):
+    id = db.Column(db.Integer, primary_key =True)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
+    monster_id = db.Column(db.Integer, db.ForeignKey('monster.id'))
+    result = db.Column(db.String()) # победа, поражение или сбежал
+    timestamp = db.Column(db.DateTime, default = datetime.datetime.now(datetime.timezone.utc))
+    loot_gold = db.Column(db.Integer)
+    loot_exp = db.Column(db.Integer)
+

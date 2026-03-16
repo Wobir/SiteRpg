@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}
+Путешествие {{ player.username }}
+{% endblock %}
+
+{% block content %}
+    <h1> Путешествие игрока {{ player.username }} </h1>
+    {% for row in logs%}
+        <p>{{row}}</p>
+    {% endfor %}
+{% endblock %}
