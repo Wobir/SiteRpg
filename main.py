@@ -123,29 +123,72 @@ def inventory():
     player = Player.query.filter_by(id = session["player_id"]).first()
     return render_template("inventory.html", player = player)
 
-@app.route("/adventure/")
+@app.route("/adventure/", methods =["GET", "POST"])
 def adventure():
     if "player_id" in session:
         player_id = session["player_id"]
+        player = Player.query.filter_by(id=player_id).first()
     else:
         return redirect(url_for("auth"))
-    player = Player.query.filter_by(id = player_id).first()
-    available_monsters = Monster.query.filter(Monster.min_level <= player.level).all()
-    monster = available_monsters[random.randint(0, len(available_monsters)-1)]
-    print("====Новый противник====")
-    print(f"ID: {monster.id} | name: {monster.name} | damage: {monster.damage} | min_level : {monster.min_level}")
-    temp_battlelog = battle(player, monster)
-    new_battlelog = BattleLog(
-        player_id = player.id,
-        monster_id = monster.id,
-        result = temp_battlelog["result"],
-        loot_gold = temp_battlelog["rewards"]["loot_gold"],
-        loot_exp = temp_battlelog['rewards']["loot_exp"]
-    )
-    db.session.add(new_battlelog)
-    db.session.commit()
-    print(temp_battlelog["log"])
-    return render_template("adventure.html", player = player, logs = temp_battlelog["log"])
+    continue_player = True
+
+    if MonsterBattle.query.filter_by(player_id = player.id).count() == 0 and continue_player :
+        available_monsters = Monster.query.filter(Monster.min_level <= player.level).all()
+        monster = available_monsters[random.randint(0, len(available_monsters)-1)]
+        new_battle = MonsterBattle(player_id = player.id, monster_id = monster.id, monster_health_local = monster.health)
+        monster_health = monster.health
+        db.session.add(new_battle)
+        db.session.commit()
+    if continue_player:
+        player_battle =  MonsterBattle.query.filter_by(player_id = player.id).first()
+        monster_id = player_battle.monster_id
+        monster = Monster.query.filter_by(id = monster_id).first()
+        monster_health = player_battle.monster_health_local
+
+    if request.method == "GET":
+        attack = request.args.get("attack", "")
+        defend = request.args.get("defend", "")
+        runaway = request.args.get("runaway", "")
+        if attack:
+            attack_result = player_attack(player, monster, monster_hp=monster_health)
+            if attack_result == "Победа":
+                player.exp += monster.exp_reward
+                player.money += monster.gold_reward
+                player_battle = MonsterBattle.query.filter_by(player_id=player_id).first()
+                db.session.delete(player_battle)
+                continue_player = False
+                monster_health = 0
+            elif attack_result == "Поражение":
+                player_battle = MonsterBattle.query.filter_by(player_id=player_id).first()
+                db.session.delete(player_battle)
+                continue_player = False
+            else:
+                player_battle.monster_health_local = attack_result
+                monster_health =  player_battle.monster_health_local
+            db.session.commit()
+        elif defend:
+            defend_result = player_defend(player, monster, monster_hp=monster_health)
+            if defend_result == "Победа":
+                player.exp += monster.exp_reward
+                player.money += monster.gold_reward
+                player_battle = MonsterBattle.query.filter_by(player_id=player_id).first()
+                db.session.delete(player_battle)
+                continue_player = False
+                monster_health = 0
+            elif defend_result == "Поражение":
+                player_battle = MonsterBattle.query.filter_by(player_id=player_id).first()
+                db.session.delete(player_battle)
+                continue_player = False
+            else:
+                player_battle.monster_health_local= defend_result
+                monster_health = player_battle.monster_health_local
+            db.session.commit()
+        elif runaway:
+            player_battle = MonsterBattle.query.filter_by(player_id = player_id).first()
+            db.session.delete(player_battle)
+            db.session.commit()
+            continue_player = False
+    return render_template("adventure.html", player = player, monster = monster, monster_health = monster_health, continue_player = continue_player)
 
 @app.route("/shop/", methods= ["POST", "GET"])
 def shop():
@@ -180,5 +223,12 @@ def logout():
     if "player_id" in session:
         session.pop("player_id")
     return redirect(url_for("auth"))
+
+@app.route("/adminpanel/",methods = ["GET", "POST"])
+def adminpanel():
+    monsters = Monster.query.all()
+    weapons = Weapon.query.all()
+    players = Player.query.all()
+    return render_template("admin_panel.html", monsters = monsters, weapons = weapons, players = players)
 
 app.run(debug=True)

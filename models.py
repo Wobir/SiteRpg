@@ -35,6 +35,12 @@ class Monster(db.Model):
     gold_reward = db.Column(db.Integer, default = 30)
     min_level = db.Column(db.Integer, default = 1)
 
+class MonsterBattle(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
+    monster_id = db.Column(db.Integer, db.ForeignKey('monster.id'))
+    monster_health_local = db.Column(db.Integer)
+
 class BattleLog(db.Model):
     id = db.Column(db.Integer, primary_key =True)
     player_id = db.Column(db.Integer, db.ForeignKey('player.id'))

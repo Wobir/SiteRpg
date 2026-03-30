@@ -6,7 +6,22 @@
 
 {% block content %}
     <h1> Путешествие игрока {{ player.username }} </h1>
-    {% for row in logs%}
-        <p>{{row}}</p>
-    {% endfor %}
+    <p>Игрок {{player.username}}</p>
+    <p>Здоровье {{player.hit_points}}</p>
+    <p>Атака {{player.weapon.damage}}</p>
+    <p>Защита {{player.weapon.defense}}</p>
+    <hr>
+    <p>Перед {{player.username}} противник "{{monster.name}}"</p>
+    <p>Здоровье: {{monster_health}}</p>
+    <p>Атака: {{monster.damage}}</p>
+    <p>Защита: {{monster.defense}}</p>
+
+    {% if continue_player == True %}
+    <a href="?attack=1">Атака</a>
+    <a href="?defend=1">Защита</a>
+    <a href="?runaway=1">Убежать</a>
+    {% elif continue_player == False %}
+    <a href="?continue=1"> Продолжить путешествие</a>
+    <a href="/inventory/"> В Инвентарь</a>
+    {% endif %}
 {% endblock %}

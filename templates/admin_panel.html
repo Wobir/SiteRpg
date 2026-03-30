@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}
+Админ Панель
+{% endblock %}
+
+{% block content %}
+    <h1>Список игроков</h1>
+
+    {% if players %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Никнейм</th>
+                    <th>Уровень</th>
+                    <th>Здоровье (HP)</th>
+                    <th>Деньги</th>
+                    <th>Опыт (EXP)</th>
+                    <th>ID Оружия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for player in players %}
+                <tr>
+                    <td>{{ player.id }}</td>
+                    <td><strong>{{ player.username }}</strong></td>
+                    <td>{{ player.level }}</td>
+                    <td>{{ player.hit_points }}</td>
+                    <td>{{ player.money }} $</td>
+                    <td>{{ player.exp }}</td>
+                    <td>{{ player.weapon_id }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Игроков пока нет.</p>
+    {% endif %}
+ <h2>⚔️ Оружие</h2>
+    {% if weapons %}
+    <div class="table-container">
+        <table class="weapons-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Урон</th>
+                    <th>Защита</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for weapon in weapons %}
+                <tr>
+                    <td>{{ weapon.id }}</td>
+                    <td><strong>{{ weapon.name }}</strong></td>
+                    <td>{{ weapon.damage }} ⚔️</td>
+                    <td>{{ weapon.defense }} 🛡️</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-message">Оружия пока нет.</p>
+    {% endif %}
+    <h2>👾 Монстры</h2>
+    {% if monsters %}
+    <div class="table-container">
+        <table class="monsters-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Имя</th>
+                    <th>Здоровье</th>
+                    <th>Урон</th>
+                    <th>Защита</th>
+                    <th>Награда (Опыт)</th>
+                    <th>Награда (Золото)</th>
+                    <th>Мин. Уровень</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for monster in monsters %}
+                <tr>
+                    <td>{{ monster.id }}</td>
+                    <td><strong>{{ monster.name }}</strong></td>
+                    <td>{{ monster.health }} HP</td>
+                    <td>{{ monster.damage }} ⚔️</td>
+                    <td>{{ monster.defense }} 🛡️</td>
+                    <td>{{ monster.exp_reward }} XP</td>
+                    <td>{{ monster.gold_reward }} 💰</td>
+                    <td>{{ monster.min_level }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-message">Монстров пока нет.</p>
+    {% endif %}
+{% endblock %}

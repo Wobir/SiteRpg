@@ -1,11 +1,33 @@
 import random
-from models import db
 def calculate_damage(attacker_damage, defender_defense):
     base = max(1, attacker_damage - defender_defense * 0.5)
     variance = random.randint(8,12) * 0.1
     return int(base * variance)
 
-def battle( player, monster):
+def player_attack(player, monster, monster_hp):
+    print("Игрок атакует противника")
+    dmg = calculate_damage(player.weapon.damage, monster.defense)
+    monster_hp -= dmg
+    if monster_hp <= 0:
+        return "Победа"
+    dmg = calculate_damage(monster.damage, player.weapon.defense)
+    player.hit_points -= dmg
+    if player.hit_points <=0:
+        return "Поражение"
+    return monster_hp
+def player_defend(player, monster, monster_hp):
+    print("Игрок защищается противника")
+    dmg = calculate_damage(monster.damage, player.weapon.defense)
+    player.hit_points -= dmg
+    if player.hit_points <= 0:
+        return "Поражение"
+    dmg = calculate_damage(player.weapon.damage, monster.defense)
+    monster_hp -= dmg
+    if monster_hp <= 0:
+        return "Победа"
+
+    return 0
+"""def battle( player, monster):
     log = []
     p_hp, m_hp = player.hit_points, monster.health
     
@@ -33,5 +55,5 @@ def battle( player, monster):
 
             return {"result":"lose", "log":log, "rewards":{"loot_gold":0, "loot_exp":0} }
     
-    """player.hit_points = max(0, p_hp)
-    db.session.commit()  """
+    player.hit_points = max(0, p_hp)
+    db.session.commit() """
