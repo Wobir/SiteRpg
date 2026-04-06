@@ -14,6 +14,8 @@ class Player(db.Model):
     weapon_id = db.Column(db.Integer,
                           db.ForeignKey("weapon.id"),
                           nullable = False, default = 1)
+    
+    inventory = db.relationship("PlayerItem", backref = "owner", lazy = "dynamic")
 
 class Weapon(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -24,6 +26,24 @@ class Weapon(db.Model):
     players = db.relationship('Player',
                               backref = "weapon",
                               lazy = "dynamic")
+  
+class ShopItem(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    name = db.Column(db.String, nullable = False)
+    item_type = db.Column(db.String(), nullable = False)
+    price = db.Column(db.Integer, nullable = False)
+    
+    healing_amount = db.Column(db.Integer, default = 0)
+    
+    weapon_id = db.Column(db.Integer, db.ForeignKey("weapon.id"), nullable = True)
+    
+    min_level = db.Column(db.Integer, default = 1)
+    
+class PlayerItem(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
+    item_id = db.Column(db.Integer, db.ForeignKey("shop_item.id"))
+    quantity = db.Column(db.Integer, default = 1)
     
 class Monster(db.Model):
     id = db.Column(db.Integer, primary_key = True)

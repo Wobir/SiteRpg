@@ -49,6 +49,33 @@ with app.app_context():
         ] 
         db.session.add_all(Monsters)
         db.session.commit()
+    if ShopItem.query.count()==0:
+        items = [
+            ShopItem(name = "Зелье лечения", item_type = "potion", 
+                     price = 50, healing_amount = 30),
+            ShopItem(name = "Большое зелье леченеия", item_type = "potion",
+                     price = 150, healing_amount = 70),
+            ShopItem(name = "Меч", item_type = "weapon",
+                     price = 300, weapon_id = 1),
+            ShopItem(name = "Лук", item_type = "weapon",
+                     price = 300, weapon_id = 2),
+            ShopItem(name = "Топор", item_type = "weapon",
+                     price = 300, weapon_id = 3)
+        ]
+        db.session.add_all(items)
+        db.session.commit()
+    if PlayerItem.query.count()==0:
+        playerItems = [
+            PlayerItem(player_id = 1, item_id = 4),
+            PlayerItem(player_id = 2, item_id = 5)
+        ]
+        db.session.add_all(playerItems)
+        db.session.commit()
+    print("===========Магазин==========")
+    all_items = ShopItem.query.all()
+    for item in all_items:
+        print(f"ID: {item.id} | name: {item.name }|"+
+              f"price: {item.price}| type:{item.item_type}")
     print("===========Оружия==========")
     all_weapons = Weapon.query.all()
     for weapon in all_weapons:
@@ -116,12 +143,54 @@ def auth():
                 return render_template("auth.html", form=authForm, message=message)
     return render_template("auth.html", form = authForm)
 
-@app.route("/inventory/")
+@app.route("/inventory/", methods = ["GET", "POST"])
 def inventory():
     if not "player_id" in session:
         return redirect(url_for("auth"))
     player = Player.query.filter_by(id = session["player_id"]).first()
-    return render_template("inventory.html", player = player)
+    player_items = PlayerItem.query.filter(PlayerItem.player_id == player.id).all()
+    player_items_ids = []
+    for i in player_items:
+        player_items_ids.append(i.item_id)
+    player_items = []
+    for i in ShopItem.query.all():
+        if i.id in player_items_ids:
+            player_items.append(i) 
+    message = None
+    message_type = "info"
+    if request.method == "POST":
+        print("получен POST запрос")
+        command = request.form.get("command")
+        item_id = request.form.get("item_id")
+        if command == "use" and item_id:
+            item = ShopItem.query.filter_by(id = int(item_id)).first()
+            if item:
+                if item.item_type == "potion":
+                    if item.healing_amount > 0:
+                        player.hit_points = min(100, player.hit_points + item.healing_amount)
+                        message = f"Вы использовали {item.name}! +{item.healing_amount}HP"
+                        player_item_potion = PlayerItem.query.filter(PlayerItem.player_id == player.id, PlayerItem.item_id == item_id).first()
+                        player_item_potion.quantity -= 1
+                        if player_item_potion.quantity == 0:
+                            db.session.delete(player_item_potion)
+                                    
+                if item.item_type == "weapon" and item.weapon_id:
+                    player.weapon_id = item.weapon_id
+                    new_weapon = Weapon.query.filter_by(id = item.weapon_id).first()
+                    message = f"Вы приобрели новое оружие {new_weapon.name}"
+                db.session.commit()
+                message_type = "success"
+                
+    player_items = PlayerItem.query.filter(PlayerItem.player_id == player.id).all()
+    player_items_ids = []
+    for i in player_items:
+        player_items_ids.append(i.item_id)
+    player_items = []
+    for i in ShopItem.query.all():
+        if i.id in player_items_ids:
+            player_items.append(i) 
+    return render_template("inventory.html", player = player, items = player_items, message = message, message_type = message_type)
+
 
 @app.route("/adventure/", methods =["GET", "POST"])
 def adventure():
@@ -196,27 +265,61 @@ def shop():
         player = Player.query.filter_by(id = session["player_id"]).first()
     else:
         return redirect(url_for("auth"))
+    message = None
+    message_type = "info"
+    player_owned_items = PlayerItem.query.filter_by(player_id = player.id).all()
+    player_owned_ids = []
+    for item in player_owned_items:
+        player_owned_ids.append(item.item_id)
+         
+    available_items = ShopItem.query.filter(ShopItem.min_level <= player.level,
+                                            db.or_(ShopItem.item_type != "weapon",
+                                                   ShopItem.id.notin_(player_owned_ids)
+                                                   )
+                                            ).all()
+    
     if request.method == "POST":
         print("получен POST запрос")
         command = request.form.get("command")
-        message = "Вам не хватает золота"
-        if command == "зелье лечения":
-            if player.money >= 50:
-                player.hit_points += 20
-                if player.hit_points > 100:
-                    player.hit_points = 100
-                player.money -= 50
-                message = "Вы полечились"
-        if command == "большое зелье лечения":
-            if player.money >= 100:
-                player.hit_points += 40
-                if player.hit_points > 100:
-                    player.hit_points = 100
-                player.money -= 100
-                message = "Вы полечились"
-        db.session.commit()
-        return render_template("shop.html", message = message)
-    return render_template("shop.html")
+        item_id = request.form.get("item_id")
+        if command == "buy" and item_id:
+            item = ShopItem.query.filter_by(id = int(item_id)).first()
+            if item and player.money >= item.price:
+                if item.item_type == "potion":
+                    if item.healing_amount > 0:
+                        player.money -= item.price
+                        player.hit_points = min(100, player.hit_points + item.healing_amount)
+                        message = f"Вы использовали {item.name}! +{item.healing_amount}HP"
+                
+                if item.item_type == "weapon" and item.weapon_id:
+                    player.weapon_id = item.weapon_id
+                    player.money -= item.price
+                    new_weapon = Weapon.query.filter_by(id = item.weapon_id).first()
+                    player_new_weapon = PlayerItem(player_id = player.id, item_id = item.id)
+                    db.session.add(player_new_weapon)
+                    message = f"Вы приобрели новое оружие {new_weapon.name}"
+                db.session.commit()
+                message_type = "success"
+            else:
+                message = "Недостаточно денег"
+                message_type = "error"
+        if command == "buyToInventory" and item_id:
+            item = ShopItem.query.filter_by(id = int(item_id)).first()
+            if item and player.money >= item.price:
+                player.money -= item.price
+                
+                if PlayerItem.query.filter(PlayerItem.player_id == player.id, PlayerItem.item_id == item.id).first():
+                   PlayerItem.query.filter(PlayerItem.player_id == player.id, PlayerItem.item_id == item.id).first().quantity += 1
+                else: 
+                    new_player_item = PlayerItem(player_id = player.id, item_id = item.id)
+                    db.session.add(new_player_item)
+                db.session.commit()
+                message = f"Вы приобрели новый предмет {item.name}"
+            else:
+                message = "Недостаточно денег"
+                message_type = "error"
+    return render_template("shop.html", player = player, items = available_items, 
+                            message = message, message_type = message_type)
 
 @app.route("/logout/")
 def logout():
