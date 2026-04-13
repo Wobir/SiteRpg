@@ -8,6 +8,7 @@ class Player(db.Model):
                          nullable = False)
     password = db.Column(db.String(16), nullable = False)
     hit_points = db.Column(db.Integer, default = 100)
+    max_hit_points = db.Column(db.Integer, default = 100)
     money = db.Column(db.Integer, default = 500)
     exp = db.Column(db.Integer, default = 0)
     level = db.Column(db.Integer, default = 1)
@@ -60,13 +61,3 @@ class MonsterBattle(db.Model):
     player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
     monster_id = db.Column(db.Integer, db.ForeignKey('monster.id'))
     monster_health_local = db.Column(db.Integer)
-
-class BattleLog(db.Model):
-    id = db.Column(db.Integer, primary_key =True)
-    player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
-    monster_id = db.Column(db.Integer, db.ForeignKey('monster.id'))
-    result = db.Column(db.String()) # победа, поражение или сбежал
-    timestamp = db.Column(db.DateTime, default = datetime.datetime.now(datetime.timezone.utc))
-    loot_gold = db.Column(db.Integer)
-    loot_exp = db.Column(db.Integer)
-

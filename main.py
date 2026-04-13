@@ -5,6 +5,8 @@ from forms import *
 import random
 from combat import * 
 
+from levels_system import * 
+
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] \
     = "sqlite:///game.db"
@@ -167,7 +169,7 @@ def inventory():
             if item:
                 if item.item_type == "potion":
                     if item.healing_amount > 0:
-                        player.hit_points = min(100, player.hit_points + item.healing_amount)
+                        player.hit_points = min(player.max_hit_points, player.hit_points + item.healing_amount)
                         message = f"Вы использовали {item.name}! +{item.healing_amount}HP"
                         player_item_potion = PlayerItem.query.filter(PlayerItem.player_id == player.id, PlayerItem.item_id == item_id).first()
                         player_item_potion.quantity -= 1
@@ -223,6 +225,7 @@ def adventure():
             if attack_result == "Победа":
                 player.exp += monster.exp_reward
                 player.money += monster.gold_reward
+                level_up(player)
                 player_battle = MonsterBattle.query.filter_by(player_id=player_id).first()
                 db.session.delete(player_battle)
                 continue_player = False
@@ -288,7 +291,7 @@ def shop():
                 if item.item_type == "potion":
                     if item.healing_amount > 0:
                         player.money -= item.price
-                        player.hit_points = min(100, player.hit_points + item.healing_amount)
+                        player.hit_points = min(player.max_hit_points, player.hit_points + item.healing_amount)
                         message = f"Вы использовали {item.name}! +{item.healing_amount}HP"
                 
                 if item.item_type == "weapon" and item.weapon_id:
