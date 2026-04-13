@@ -335,6 +335,57 @@ def adminpanel():
     monsters = Monster.query.all()
     weapons = Weapon.query.all()
     players = Player.query.all()
-    return render_template("admin_panel.html", monsters = monsters, weapons = weapons, players = players)
+    message = None
+    if request.method == "POST":
+        if request.form.get("del_monster"):
+            monster = Monster.query.filter_by(id = request.form.get("del_monster")).first()
+            MonsterBattle.query.filter_by(monster_id = request.form.get("del_monster")).delete()
+            monsters.remove(monster)
+            db.session.delete(monster)
+            db.session.commit()
+        if request.form.get("del_weapon"):
+            weapon = Weapon.query.filter_by(id = request.form.get("del_weapon")).first()
+            shop_item = ShopItem.query.filter_by(weapon_id = request.form.get("del_weapon")).first()
+            PlayerItem.query.filter_by(item_id = shop_item.id).delete()
+            
+            players = Player.query.filter_by(weapon_id = weapon.id).all() 
+            for p in players:
+                p.weapon_id = 0
+            db.session.commit()
+            weapons.remove(weapon)
+            db.session.delete(shop_item)
+            db.session.delete(weapon)
+            db.session.commit()
+        if request.form.get("weapon_name"):
+            if not Weapon.query.filter_by(name = request.form.get("weapon_name")).first(): 
+                new_weapon = Weapon(
+                    name = request.form.get("weapon_name"),
+                    damage = request.form.get("weapon_damage") or None,
+                    defense = request.form.get("weapon_defense") or None,
+                )
+                weapons.append(new_weapon)
+                db.session.add(new_weapon)
+                db.session.commit()
+            else:
+                message = "Ошибка оружие с таким названием уже существует"
+                
+        if request.form.get("monster_name"):
+            if not Monster.query.filter_by(name = request.form.get("monster_name")).first(): 
+                new_monster = Monster(
+                    name = request.form.get("monster_name"),
+                    health = request.form.get("monster_health") or None,
+                    damage = request.form.get("monster_damage") or None,
+                    defense = request.form.get("monster_defense") or None,
+                    exp_reward = request.form.get("monster_exp") or None,
+                    gold_reward = request.form.get("monster_gold") or None,
+                    min_level = request.form.get("monster_level") or None,
+                )
+                monsters.append(new_monster)
+                db.session.add(new_monster)
+                db.session.commit()
+            else:
+                message = "Ошибка монстр с таким названием уже существует"
+                
+    return render_template("admin_panel.html", message=message, monsters = monsters, weapons = weapons, players = players)
 
 app.run(debug=True)

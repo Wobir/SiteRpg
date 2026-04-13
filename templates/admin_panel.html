@@ -56,8 +56,25 @@
                     <td><strong>{{ weapon.name }}</strong></td>
                     <td>{{ weapon.damage }} ⚔️</td>
                     <td>{{ weapon.defense }} 🛡️</td>
+                    {% if weapon.id != 0%}
+                    <td>
+                        <form method="POST">
+                            <button type="submit" name="del_weapon" value="{{weapon.id}}">
+                                X
+                            </button>
+                        </form>
+                    </td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
+                <tr>
+                    <form method="POST">
+                        <td><input type="submit"></td>
+                        <td><input type="text" name="weapon_name"></td>
+                        <td><input type="number" name="weapon_damage"></td>
+                        <td><input type="number" name="weapon_defense"></td>
+                    </form>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -91,8 +108,27 @@
                     <td>{{ monster.exp_reward }} XP</td>
                     <td>{{ monster.gold_reward }} 💰</td>
                     <td>{{ monster.min_level }}</td>
+                    <td>
+                        <form method="POST">
+                            <button type="submit" name="del_monster" value="{{monster.id}}">
+                                X
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
+                <tr>
+                    <form method="POST">
+                        <td><input type="submit"></td>
+                        <td><input type="text" name="monster_name"></td>
+                        <td><input type="number" name="monster_health"></td>
+                        <td><input type="number" name="monster_damage"></td>
+                        <td><input type="number" name="monster_defense"></td>
+                        <td><input type="number" name="monster_exp"></td>
+                        <td><input type="number" name="monster_gold"></td>
+                        <td><input type="number" name="monster_level"></td>
+                    </form>
+                </tr>
             </tbody>
         </table>
     </div>
