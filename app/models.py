@@ -6,7 +6,7 @@ class Player(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(32), unique = True,
                          nullable = False)
-    password = db.Column(db.String(16), nullable = False)
+    password = db.Column(db.String(256), nullable = False)
     hit_points = db.Column(db.Integer, default = 100)
     max_hit_points = db.Column(db.Integer, default = 100)
     money = db.Column(db.Integer, default = 500)
@@ -16,6 +16,7 @@ class Player(db.Model):
                           db.ForeignKey("weapon.id"),
                           nullable = False, default = 1)
     
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     inventory = db.relationship("PlayerItem", backref = "owner", lazy = "dynamic")
 
 class Weapon(db.Model):
@@ -37,6 +38,9 @@ class ShopItem(db.Model):
     healing_amount = db.Column(db.Integer, default = 0)
     
     weapon_id = db.Column(db.Integer, db.ForeignKey("weapon.id"), nullable = True)
+    weapon = db.relationship("Weapon", backref="shop_items", lazy="joined")
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    __table_args__ = (db.UniqueConstraint('name', name='uq_shopitem_name'),)
     
     min_level = db.Column(db.Integer, default = 1)
     
@@ -55,6 +59,7 @@ class Monster(db.Model):
     exp_reward = db.Column(db.Integer, default = 20)
     gold_reward = db.Column(db.Integer, default = 30)
     min_level = db.Column(db.Integer, default = 1)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
 class MonsterBattle(db.Model):
     id = db.Column(db.Integer, primary_key = True)

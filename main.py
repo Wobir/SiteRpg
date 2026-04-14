@@ -1,11 +1,16 @@
-from flask import Flask, session, request, render_template, redirect, url_for
-
-from models import *
-from forms import *
+from flask import Flask, session, request, render_template, redirect, url_for, flash
+import os
 import random
-from combat import * 
+import logging
 
-from levels_system import * 
+from app.models import db, Player, Weapon, Monster, ShopItem, PlayerItem, MonsterBattle
+from app.forms import RegForm, AuthForm
+from app.combat import player_attack, player_defend
+from app.levels_system import level_up
+from werkzeug.security import generate_password_hash, check_password_hash
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] \
@@ -15,86 +20,16 @@ app.secret_key = "secret"
 
 db.init_app(app)
 
-with app.app_context():
-    db.create_all()
+def get_owned_shop_items(player):
+    owned = PlayerItem.query.filter(PlayerItem.player_id == player.id).all()
+    owned_ids = [p.item_id for p in owned]
+    return [s for s in ShopItem.query.all() if s.id in owned_ids]
 
-    if Weapon.query.count() == 0:
-        weapons = [
-            Weapon(name = "Меч", damage = 25, defense = 10),
-            Weapon(name="Лук", damage=30, defense=5),
-            Weapon(name="Топор", damage=15, defense=15),
-        ]
-        db.session.add_all(weapons)
-        db.session.commit()
 
-    if Player.query.count() == 0:
-        Players = [
-            Player(username = "Player 1",
-                   password = "password",
-                   weapon_id = 2),
-            Player(username = "Player 2",
-                   password = "password",
-                   weapon_id = 3)
-        ]
-        db.session.add_all(Players)
-        db.session.commit()
-
-    if Monster.query.count() == 0:
-        Monsters = [
-            Monster(name = "Гоблин",
-                    min_level = 1),
-            Monster(name = "Скелет",
-                    damage = 12,
-                    defense = 2,
-                    gold_reward = 50,
-                    min_level = 1)
-        ] 
-        db.session.add_all(Monsters)
-        db.session.commit()
-    if ShopItem.query.count()==0:
-        items = [
-            ShopItem(name = "Зелье лечения", item_type = "potion", 
-                     price = 50, healing_amount = 30),
-            ShopItem(name = "Большое зелье леченеия", item_type = "potion",
-                     price = 150, healing_amount = 70),
-            ShopItem(name = "Меч", item_type = "weapon",
-                     price = 300, weapon_id = 1),
-            ShopItem(name = "Лук", item_type = "weapon",
-                     price = 300, weapon_id = 2),
-            ShopItem(name = "Топор", item_type = "weapon",
-                     price = 300, weapon_id = 3)
-        ]
-        db.session.add_all(items)
-        db.session.commit()
-    if PlayerItem.query.count()==0:
-        playerItems = [
-            PlayerItem(player_id = 1, item_id = 4),
-            PlayerItem(player_id = 2, item_id = 5)
-        ]
-        db.session.add_all(playerItems)
-        db.session.commit()
-    print("===========Магазин==========")
-    all_items = ShopItem.query.all()
-    for item in all_items:
-        print(f"ID: {item.id} | name: {item.name }|"+
-              f"price: {item.price}| type:{item.item_type}")
-    print("===========Оружия==========")
-    all_weapons = Weapon.query.all()
-    for weapon in all_weapons:
-        print(f"ID: {weapon.id} | name: {weapon.name }|"+
-              f"damage: {weapon.damage}| defense:{weapon.defense}")
-    print("===========Игроки==========")
-    all_player = Player.query.all()
-    for player in all_player:
-        player_weapon_name = player.weapon.name
-        player_weapon_damage = player.weapon.damage
-        player_weapon_defense = player.weapon.defense
-        print(f"ID: {player.id} | username {player.username} |"
-              f"WeaponName {player_weapon_name} | WeaponDamage {player_weapon_damage}" )
-    print("========Монстры========")
-    all_monsters = Monster.query.all()
-    for monster in all_monsters:
-        print(f"ID: {monster.id} | name: {monster.name} | damage: {monster.damage} | min_level : {monster.min_level}")
+def get_owned_shop_items(player):
+    owned = PlayerItem.query.filter(PlayerItem.player_id == player.id).all()
+    owned_ids = [p.item_id for p in owned]
+    return [s for s in ShopItem.query.all() if s.id in owned_ids]
 
 @app.route("/")
 def index():
@@ -112,16 +47,19 @@ def reg():
             if Player.query.filter_by(username = username).count()>0:
                 message = "Игрок с таким именем уже существует"
                 return render_template("reg.html", form = regForm, message = message)
-            new_player = Player(
-                username = username,
-                password = password,
-                )
-
-            db.session.add(new_player)
-            db.session.commit()
+            try:
+                hashed = generate_password_hash(password)
+                new_player = Player(username=username, password=hashed)
+                db.session.add(new_player)
+                db.session.commit()
+            except Exception as e:
+                logger.exception("Failed to create new player")
+                db.session.rollback()
+                message = "Ошибка при создании игрока"
+                return render_template("reg.html", form=regForm, message=message)
             session["player_id"] = new_player.id
             session["player_name"] = new_player.username
-            print(session["player_id"], session["player_name"])
+            logger.info("New player registered: %s", new_player.username)
             return redirect(url_for("inventory"))
     return render_template("reg.html", form = regForm)
 
@@ -135,14 +73,20 @@ def auth():
             username = request.form.get("name")
             password = request.form.get("password")
             player = Player.query.filter_by(username = username).first()
-            if player and player.password == password:
-                session["player_id"] = player.id
-                session["player_name"] = player.username
-                print(session["player_id"], session["player_name"])
-                return redirect(url_for("inventory"))
-            else:
-                message = "Игрок не существует или вы ввели не верный пароль"
+            try:
+                if player and check_password_hash(player.password, password):
+                    session["player_id"] = player.id
+                    session["player_name"] = player.username
+                    logger.info("Player logged in: %s", player.username)
+                    return redirect(url_for("inventory"))
+                else:
+                    message = "Игрок не существует или вы ввели не верный пароль"
+                    return render_template("auth.html", form=authForm, message=message)
+            except Exception:
+                logger.exception("Error during authentication")
+                message = "Ошибка авторизации"
                 return render_template("auth.html", form=authForm, message=message)
+            
     return render_template("auth.html", form = authForm)
 
 @app.route("/inventory/", methods = ["GET", "POST"])
@@ -150,18 +94,11 @@ def inventory():
     if not "player_id" in session:
         return redirect(url_for("auth"))
     player = Player.query.filter_by(id = session["player_id"]).first()
-    player_items = PlayerItem.query.filter(PlayerItem.player_id == player.id).all()
-    player_items_ids = []
-    for i in player_items:
-        player_items_ids.append(i.item_id)
-    player_items = []
-    for i in ShopItem.query.all():
-        if i.id in player_items_ids:
-            player_items.append(i) 
+    player_items = get_owned_shop_items(player)
     message = None
     message_type = "info"
     if request.method == "POST":
-        print("получен POST запрос")
+        logger.debug("inventory: received POST request")
         command = request.form.get("command")
         item_id = request.form.get("item_id")
         if command == "use" and item_id:
@@ -183,14 +120,7 @@ def inventory():
                 db.session.commit()
                 message_type = "success"
                 
-    player_items = PlayerItem.query.filter(PlayerItem.player_id == player.id).all()
-    player_items_ids = []
-    for i in player_items:
-        player_items_ids.append(i.item_id)
-    player_items = []
-    for i in ShopItem.query.all():
-        if i.id in player_items_ids:
-            player_items.append(i) 
+    player_items = get_owned_shop_items(player)
     return render_template("inventory.html", player = player, items = player_items, message = message, message_type = message_type)
 
 
@@ -274,15 +204,14 @@ def shop():
     player_owned_ids = []
     for item in player_owned_items:
         player_owned_ids.append(item.item_id)
-         
-    available_items = ShopItem.query.filter(ShopItem.min_level <= player.level,
-                                            db.or_(ShopItem.item_type != "weapon",
-                                                   ShopItem.id.notin_(player_owned_ids)
-                                                   )
-                                            ).all()
+        available_items = ShopItem.query.filter(ShopItem.min_level <= player.level,
+                              db.or_(ShopItem.item_type != "weapon",
+                                  ShopItem.id.notin_([i.item_id for i in player_owned_items])
+                                  )
+                              ).all()
     
     if request.method == "POST":
-        print("получен POST запрос")
+        logger.debug("shop: received POST request")
         command = request.form.get("command")
         item_id = request.form.get("item_id")
         if command == "buy" and item_id:
@@ -335,6 +264,7 @@ def adminpanel():
     monsters = Monster.query.all()
     weapons = Weapon.query.all()
     players = Player.query.all()
+    shop_items = ShopItem.query.all()
     message = None
     if request.method == "POST":
         if request.form.get("del_monster"):
@@ -343,19 +273,60 @@ def adminpanel():
             monsters.remove(monster)
             db.session.delete(monster)
             db.session.commit()
-        if request.form.get("del_weapon"):
-            weapon = Weapon.query.filter_by(id = request.form.get("del_weapon")).first()
-            shop_item = ShopItem.query.filter_by(weapon_id = request.form.get("del_weapon")).first()
-            PlayerItem.query.filter_by(item_id = shop_item.id).delete()
-            
-            players = Player.query.filter_by(weapon_id = weapon.id).all() 
-            for p in players:
-                p.weapon_id = 0
-            db.session.commit()
-            weapons.remove(weapon)
-            db.session.delete(shop_item)
-            db.session.delete(weapon)
-            db.session.commit()
+            flash("Монстр удалён", "success")
+        if request.form.get("del_shop_item"):
+            # delete shop item and inventory references
+            shop_item = ShopItem.query.filter_by(id=request.form.get("del_shop_item")).first()
+            if shop_item:
+                PlayerItem.query.filter_by(item_id=shop_item.id).delete()
+                db.session.delete(shop_item)
+                db.session.commit()
+            flash("Предмет магазина удалён", "success")
+        if request.form.get("shop_item_name"):
+            # add new shop item
+            name = request.form.get("shop_item_name")
+            item_type = request.form.get("shop_item_type") or "potion"
+            try:
+                price = int(request.form.get("shop_item_price") or 0)
+            except ValueError:
+                price = 0
+            try:
+                healing = int(request.form.get("shop_item_healing") or 0)
+            except ValueError:
+                healing = 0
+            try:
+                weapon_id = int(request.form.get("shop_item_weapon_id")) if request.form.get("shop_item_weapon_id") else None
+            except ValueError:
+                weapon_id = None
+            try:
+                min_level = int(request.form.get("shop_item_min_level") or 1)
+            except ValueError:
+                min_level = 1
+
+            if not ShopItem.query.filter_by(name=name).first():
+                new_item = ShopItem(name=name, item_type=item_type, price=price,
+                                    healing_amount=healing, weapon_id=weapon_id,
+                                    min_level=min_level)
+                db.session.add(new_item)
+                db.session.commit()
+                flash(f"Предмет '{name}' добавлен", "success")
+            else:
+                message = "Предмет с таким именем уже существует"
+                flash(message, "error")
+            if request.form.get("del_weapon"):
+                weapon = Weapon.query.filter_by(id = request.form.get("del_weapon")).first()
+                shop_item = ShopItem.query.filter_by(weapon_id = request.form.get("del_weapon")).first()
+                PlayerItem.query.filter_by(item_id = shop_item.id).delete()
+                
+                players = Player.query.filter_by(weapon_id = weapon.id).all() 
+                for p in players:
+                    p.weapon_id = 0
+                db.session.commit()
+                flash("Оружие удалено", "success")
+                weapons.remove(weapon)
+                db.session.delete(shop_item)
+                db.session.delete(weapon)
+                db.session.commit()
         if request.form.get("weapon_name"):
             if not Weapon.query.filter_by(name = request.form.get("weapon_name")).first(): 
                 new_weapon = Weapon(
@@ -368,6 +339,7 @@ def adminpanel():
                 db.session.commit()
             else:
                 message = "Ошибка оружие с таким названием уже существует"
+                flash(message, "error")
                 
         if request.form.get("monster_name"):
             if not Monster.query.filter_by(name = request.form.get("monster_name")).first(): 
@@ -385,7 +357,10 @@ def adminpanel():
                 db.session.commit()
             else:
                 message = "Ошибка монстр с таким названием уже существует"
-                
-    return render_template("admin_panel.html", message=message, monsters = monsters, weapons = weapons, players = players)
+                flash(message, "error")
+    return render_template("admin_panel.html", message=message, monsters = monsters, weapons = weapons, players = players, shop_items=shop_items)
 
-app.run(debug=True)
+if __name__ == "__main__":
+    # Use env var for secret in production
+    app.secret_key = os.environ.get("SITE_RPG_SECRET", app.secret_key)
+    app.run(debug=True)

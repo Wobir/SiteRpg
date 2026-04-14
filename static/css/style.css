@@ -1,0 +1,38 @@
+/* Light stylesheet for SiteRpg (uses Bootstrap base) */
+:root{
+  --bg:#f7fafc;
+  --card:#ffffff;
+  --muted:#6b7280;
+  --accent:#0d6efd;
+  --success:#198754;
+  --error:#dc3545;
+  --text:#0f172a;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.4;
+}
+.container{max-width:1100px;margin:0 auto}
+h1,h2,h3{margin:8px 0}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04)}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(15,23,42,0.04)}
+thead th{background:#f8fafc;font-weight:600;color:var(--muted)}
+tr:last-child td{border-bottom:none}
+.table-container{overflow:auto;margin-bottom:16px}
+
+/* inputs: rely on bootstrap but provide baseline for elements without class */
+input,select,textarea{padding:.5rem .75rem;border-radius:.375rem;border:1px solid #d1d5db;background:#fff;color:var(--text);box-shadow:none}
+button, input[type=submit]{padding:.5rem .75rem;border-radius:.375rem}
+
+.flashes{list-style:none;padding:0;margin:0 0 12px 0}
+.flashes li{padding:8px 12px;border-radius:6px;margin-bottom:8px}
+.flash-success{background:#e6f4ea;color:var(--success);border:1px solid rgba(25,135,84,0.08)}
+.flash-error{background:#fdecea;color:var(--error);border:1px solid rgba(220,53,69,0.08)}
+.empty-message{color:var(--muted);padding:10px}
+.add-shop-item{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.add-shop-item label{display:flex;gap:6px;align-items:center}
+@media (max-width:720px){th,td{padding:8px}}

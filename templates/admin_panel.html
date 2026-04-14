@@ -5,10 +5,21 @@
 {% endblock %}
 
 {% block content %}
-    <h1>Список игроков</h1>
+        <h1>Список игроков</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, msg in messages %}
+                        <li class="flash-{{ category }}">{{ msg }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
 
     {% if players %}
-        <table>
+        <div class="table-responsive mb-3">
+        <table class="table table-striped table-hover table-sm align-middle">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -34,13 +45,14 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     {% else %}
         <p>Игроков пока нет.</p>
     {% endif %}
  <h2>⚔️ Оружие</h2>
     {% if weapons %}
-    <div class="table-container">
-        <table class="weapons-table">
+    <div class="table-responsive mb-3">
+        <table class="table table-striped table-hover table-sm align-middle weapons-table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -59,32 +71,28 @@
                     {% if weapon.id != 0%}
                     <td>
                         <form method="POST">
-                            <button type="submit" name="del_weapon" value="{{weapon.id}}">
-                                X
-                            </button>
+                            <button type="submit" name="del_weapon" value="{{weapon.id}}" class="btn btn-sm btn-outline-danger">Удалить</button>
                         </form>
                     </td>
                     {% endif %}
                 </tr>
                 {% endfor %}
-                <tr>
-                    <form method="POST">
-                        <td><input type="submit"></td>
-                        <td><input type="text" name="weapon_name"></td>
-                        <td><input type="number" name="weapon_damage"></td>
-                        <td><input type="number" name="weapon_defense"></td>
-                    </form>
-                </tr>
             </tbody>
         </table>
     </div>
+    <form method="POST" class="d-flex flex-column flex-md-row gap-2 align-items-center mb-4">
+        <input class="form-control form-control-sm" type="text" name="weapon_name" placeholder="Название">
+        <input class="form-control form-control-sm" type="number" name="weapon_damage" placeholder="Урон">
+        <input class="form-control form-control-sm" type="number" name="weapon_defense" placeholder="Защита">
+        <button class="btn btn-primary btn-sm" type="submit">Добавить оружие</button>
+    </form>
     {% else %}
     <p class="empty-message">Оружия пока нет.</p>
     {% endif %}
     <h2>👾 Монстры</h2>
     {% if monsters %}
-    <div class="table-container">
-        <table class="monsters-table">
+    <div class="table-responsive mb-3">
+        <table class="table table-striped table-hover table-sm align-middle monsters-table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -110,29 +118,79 @@
                     <td>{{ monster.min_level }}</td>
                     <td>
                         <form method="POST">
-                            <button type="submit" name="del_monster" value="{{monster.id}}">
-                                X
-                            </button>
+                            <button type="submit" name="del_monster" value="{{monster.id}}" class="btn btn-sm btn-outline-danger">Удалить</button>
                         </form>
                     </td>
                 </tr>
                 {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <form method="POST" class="d-flex flex-column flex-md-row gap-2 align-items-center mb-4">
+        <input class="form-control form-control-sm" type="text" name="monster_name" placeholder="Имя">
+        <input class="form-control form-control-sm" type="number" name="monster_health" placeholder="HP">
+        <input class="form-control form-control-sm" type="number" name="monster_damage" placeholder="Урон">
+        <input class="form-control form-control-sm" type="number" name="monster_defense" placeholder="Защита">
+        <input class="form-control form-control-sm" type="number" name="monster_exp" placeholder="EXP">
+        <input class="form-control form-control-sm" type="number" name="monster_gold" placeholder="Золото">
+        <input class="form-control form-control-sm" type="number" name="monster_level" placeholder="Мин. ур." value="1">
+        <button class="btn btn-primary btn-sm" type="submit">Добавить монстра</button>
+    </form>
+    {% else %}
+    <p class="empty-message">Монстров пока нет.</p>
+    {% endif %}
+    <h2>🛒 Магазин</h2>
+    {% if shop_items %}
+    <div class="table-responsive mb-3">
+        <table class="table table-striped table-hover table-sm align-middle shop-table">
+            <thead>
                 <tr>
-                    <form method="POST">
-                        <td><input type="submit"></td>
-                        <td><input type="text" name="monster_name"></td>
-                        <td><input type="number" name="monster_health"></td>
-                        <td><input type="number" name="monster_damage"></td>
-                        <td><input type="number" name="monster_defense"></td>
-                        <td><input type="number" name="monster_exp"></td>
-                        <td><input type="number" name="monster_gold"></td>
-                        <td><input type="number" name="monster_level"></td>
-                    </form>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th>Цена</th>
+                    <th>Исцеление</th>
+                    <th>Оружие (ID)</th>
+                    <th>Мин. уровень</th>
+                    <th>Действие</th>
                 </tr>
+            </thead>
+            <tbody>
+                {% for item in shop_items %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td><strong>{{ item.name }}</strong></td>
+                    <td>{{ item.item_type }}</td>
+                    <td>{{ item.price }}</td>
+                    <td>{{ item.healing_amount }}</td>
+                    <td>{{ item.weapon_id or '-' }}</td>
+                    <td>{{ item.min_level }}</td>
+                    <td>
+                        <form method="POST">
+                            <button type="submit" name="del_shop_item" value="{{ item.id }}" class="btn btn-sm btn-outline-danger">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
     {% else %}
-    <p class="empty-message">Монстров пока нет.</p>
+    <p class="empty-message">В магазине пока нет предметов.</p>
     {% endif %}
+
+    <h3>Добавить предмет в магазин</h3>
+    <form method="POST" class="d-flex flex-column flex-md-row gap-2 align-items-center mb-4">
+        <input class="form-control form-control-sm" type="text" name="shop_item_name" required placeholder="Название">
+        <select class="form-select form-select-sm" name="shop_item_type">
+            <option value="potion">potion</option>
+            <option value="weapon">weapon</option>
+            <option value="misc">misc</option>
+        </select>
+        <input class="form-control form-control-sm" type="number" name="shop_item_price" value="0" placeholder="Цена">
+        <input class="form-control form-control-sm" type="number" name="shop_item_healing" value="0" placeholder="Исцеление">
+        <input class="form-control form-control-sm" type="number" name="shop_item_weapon_id" placeholder="ID оружия">
+        <input class="form-control form-control-sm" type="number" name="shop_item_min_level" value="1" placeholder="Мин. ур.">
+        <button class="btn btn-primary btn-sm" type="submit">Добавить</button>
+    </form>
 {% endblock %}
