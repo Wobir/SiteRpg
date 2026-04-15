@@ -1,0 +1,2 @@
+Переделать Shop-Item модель на отдельный Item и в ShopItem сделать ссылку через id.
+Player-item должен ссылаться на item вместо ShopItem
